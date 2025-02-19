@@ -10,10 +10,10 @@
 #define BOTAO_JOYSTICK 22
 #define BOTAO_A 5
 #define joyX 26
-#define joyY 27
+#define joyY 26
 
 #define DEBOUNCE_TIME 200000  // 200 ms em microssegundos
-#define MARGEM_CENTRO 100    // Margem para considerar o joystick no centro
+#define MARGEM_CENTRO 300    // Margem para considerar o joystick no centro
 
 static bool estado_ledG = false;
 static bool ledsRB_ativos = false;
@@ -82,6 +82,7 @@ void full_setup() {
     // Configura interrupção única para ambos os botões
     gpio_set_irq_enabled_with_callback(BOTAO_JOYSTICK, GPIO_IRQ_EDGE_FALL, true, &irq_callback);
     gpio_set_irq_enabled(BOTAO_A, GPIO_IRQ_EDGE_FALL, true);
+
 }
 
 // Lê valores do joystick (ADC)
