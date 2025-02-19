@@ -1,8 +1,8 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "pico/stdlib.h"
 #include "hardware/pwm.h"
 #include "hardware/adc.h"
-#include <stdlib.h>
 
 #define LED_B 12
 #define LED_G 11
@@ -13,10 +13,10 @@
 #define joyY 27
 
 #define DEBOUNCE_TIME 200000  // 200 ms em microssegundos
+#define MARGEM_CENTRO 100    // Margem para considerar o joystick no centro
 
 static bool estado_ledG = false;
-static bool estado_ledR = false;
-static bool estado_ledB = false;
+static bool ledsRB_ativos = false;
 static uint32_t last_interrupt_time_joystick = 0;
 static uint32_t last_interrupt_time_A = 0;
 
@@ -30,7 +30,7 @@ void setup_pwm(uint gpio) {
 
 // Define o nível PWM do LED
 void set_pwm(uint gpio, uint16_t value) {
-    pwm_set_gpio_level(gpio, value);
+    pwm_set_gpio_level(gpio, ledsRB_ativos ? value : 0);
 }
 
 // Callback única para interrupções
@@ -48,11 +48,7 @@ void irq_callback(uint gpio, uint32_t eventos) {
         if (current_time - last_interrupt_time_A < DEBOUNCE_TIME) return;  // Ignora se for muito rápido
         last_interrupt_time_A = current_time;
 
-        estado_ledR = !estado_ledR;
-        estado_ledB = !estado_ledB;
-
-        gpio_put(LED_R, estado_ledR);
-        gpio_put(LED_B, estado_ledB);
+        ledsRB_ativos = !ledsRB_ativos;
     }
 }
 
@@ -106,16 +102,19 @@ int main() {
         int eixo_x = ler_joystick_x();
         int eixo_y = ler_joystick_y();
 
-        // Normaliza valores para PWM (0 - 4095)
-        uint16_t pwm_vermelho = abs(eixo_x - 2048) * 2; // Quanto mais longe do centro, mais brilho
-        uint16_t pwm_azul = abs(eixo_y - 2048) * 2;
+        // Verifica se o joystick está no centro (com uma margem de tolerância)
+        if (abs(eixo_x - 2048) < MARGEM_CENTRO && abs(eixo_y - 2048) < MARGEM_CENTRO) {
+            set_pwm(LED_R, 0);
+            set_pwm(LED_B, 0);
+        } else {
+            // Normaliza valores para PWM (0 - 4095)
+            uint16_t pwm_vermelho = abs(eixo_x - 2048) * 2; // Quanto mais longe do centro, mais brilho
+            uint16_t pwm_azul = abs(eixo_y - 2048) * 2;
 
-        // Aplica PWM aos LEDs
-        set_pwm(LED_R, pwm_vermelho);
-        set_pwm(LED_B, pwm_azul);
-
-        printf("Joystick -> X: %d, Y: %d | PWM -> R: %d, B: %d\n", eixo_x, eixo_y, pwm_vermelho, pwm_azul);
+            // Aplica PWM aos LEDs
+            set_pwm(LED_R, pwm_vermelho);
+            set_pwm(LED_B, pwm_azul);
+        }
         sleep_ms(100);
     }
 }
-
